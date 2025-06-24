@@ -1,0 +1,101 @@
+<html>
+<head>
+    <title>HSN/SAC Code Search</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        input[type="text"] {
+            padding: 8px;
+            margin-right: 10px;
+        }
+        button {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        #results {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>HSN/SAC Code Search</h1>
+
+    <div>
+        <input type="text" id="code" placeholder="Enter HSN or SAC Code">
+        <button onclick="searchCode()">Search</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        async function searchCode() {
+            const code = document.getElementById('code').value.trim();
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = 'Searching...';
+
+            try {
+                // Try HSN first
+                try {
+                    let res = await fetch(`http://localhost:8081/hsn/${code}`);
+                    if (!res.ok) {
+                        if (res.status === 404) {
+                            // HSN not found, try SAC
+                            console.log('HSN not found, trying SAC');
+                        } else {
+                            throw new Error(`HSN request failed with status ${res.status}`);
+                        }
+                    } else {
+                        let data = await res.json();
+                        resultsDiv.innerHTML = `
+                            <h3>HSN Code: ${data.hsn_code}</h3>
+                            <p><strong>Description:</strong> ${data.description}</p>
+                            <p><strong>GST Rate:</strong> ${data.gst_rate}</p>
+                        `;
+                        return;
+                    }
+                } catch (hsnErr) {
+                    console.log('Error during HSN search:', hsnErr);
+                    // If HSN search fails, try SAC
+                }
+
+                // Try SAC next
+                try {
+                    let res = await fetch(`http://localhost:8081/sac/${code}`);
+                    if (!res.ok) {
+                        if (res.status === 404) {
+                            // SAC not found
+                            resultsDiv.innerHTML = `<p style="color:red;">Code not found in HSN or SAC data.</p>`;
+                        } else {
+                            throw new Error(`SAC request failed with status ${res.status}`);
+                        }
+                    } else {
+                        let data = await res.json();
+                        resultsDiv.innerHTML = `
+                            <h3>SAC Code: ${data.sac_code}</h3>
+                            <p><strong>Description:</strong> ${data.description}</p>
+                            <p><strong>Linked HSN Code:</strong> ${data.hsn_code}</p>
+                        `;
+                    }
+                } catch (sacErr) {
+                    console.error('Error during SAC search:', sacErr);
+                    resultsDiv.innerHTML = `<p style="color:red;">An error occurred while searching.</p>`;
+                }
+            } catch (err) {
+                console.error(err);
+                resultsDiv.innerHTML = `<p style="color:red;">An error occurred while searching.</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
